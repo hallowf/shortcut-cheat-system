@@ -1,0 +1,3 @@
+[submodule "cnake_mem"]
+	path = cnake_mem
+	url = https://github.com/hallowf/cnake_mem
