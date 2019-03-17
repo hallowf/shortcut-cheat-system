@@ -1,4 +1,5 @@
 venv
+wvenv
 __pycache__
 *.json
 Debug
