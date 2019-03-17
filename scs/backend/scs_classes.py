@@ -45,8 +45,6 @@ class Backend(object):
     def __exit__(self):
         keyboard.unhook_all_hotkeys()
 
-
-
 class Checker(object):
 
     def __init__(self):
