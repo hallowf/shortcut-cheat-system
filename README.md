@@ -24,6 +24,8 @@
 * ubuntu-restricted-extras - for Ubuntu
 * libgstreamer-plugins-base1.0-dev
 
+`pip install -r requirements.txt`
+
 ### Notes:
 1. keyboard doesn't differentiate order
  * so 123 is the same as 321
