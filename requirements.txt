@@ -1,6 +1,6 @@
 psutil
 keyboard
 # on windows pip install on linux see "Building requirements" on readme
-wxPython
+#wxPython
 # for building pybind11
 pytest

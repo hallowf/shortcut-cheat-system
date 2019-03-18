@@ -1,5 +1,3 @@
 sudo apt update
-sudo apt install make cmake gcc libgtk-3-dev \
-libwebkitgtk-dev libwebkitgtk-3.0-dev \
-freeglut3 freeglut3-dev python-gst-1.0 python3-gst-1.0 \
-libglib2.0-dev libgstreamer-plugins-base1.0-dev
+wget "https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-16.04/wxPython-4.0.4-cp37-cp37m-linux_x86_64.whl"
+pip install wxPython-4.0.4-cp37-cp37m-linux_x86_64.whl

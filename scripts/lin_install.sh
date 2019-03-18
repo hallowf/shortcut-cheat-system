@@ -10,7 +10,7 @@ sudo make install
 # Make python module
 cd .. && cd ..
 mkdir build && cd build
-cmake ..
+export BUILD_TARGET=linux && cmake ..
 cmake --build .
 
 
