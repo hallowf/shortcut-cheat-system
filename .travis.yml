@@ -1,0 +1,48 @@
+jobs:
+  include:
+  - stage: Linux build
+    os: linux
+    language: python
+    sudo: required
+    dist: xenial
+    python: 3.7
+    env:
+    - PY=python3
+    - UPX_PATH="$PWD"/UPX
+  - stage: Windows build
+    os: windows
+    language: shell
+    python: 3.7
+    env:
+    - PY=py
+    - UPX_PATH="$PWD"/UPX
+
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    ./scripts/osx_before_install.sh;
+  elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    ./scripts/lin_before_install.sh;
+  elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    ./scripts/win_before_install.sh;
+  fi
+
+install:
+- "$PY -m pip install -r requirements.txt"
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+    ./scripts/osx_install.sh;
+  elif [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+    ./scripts/lin_install.sh;
+  elif [[ "$TRAVIS_OS_NAME" == "windows" ]]; then
+    ./scripts/win_install.bat;
+  fi
+
+script:
+- "echo done"
+
+deploy:
+  provider: releases
+  api_key:
+    secure: LZt/vsTdQDOs2eU3yPblEd/lYWRqMdlpJf8QhLAdSytytHb28g0kRxhPGl+cwBCRN5LXm42NhT7MHCHAxIRvFubsX5NqGib+pxJHzIU8dx63sBC28pfGh/Q8Uxc01S3l4LuDiDGgkytBUmcxSl5nMkKKFuC4KZeOwXdnHJCAo34c8Kp2kIIkuZmjYeAoFbHDt8EjjjJfLm342to5nYkbDCCE17pB1lb5G2xfVR72dnxx2n+BIiLBnMyddd9Z2gsWplGqJz4/MLxXCYGm64TPCnLvO5uDdb/x+JT5hGOe6ijLcZlc4DiYAeSA7Iwh5AjCMXpigxHVil0pXL1toxXdESK7oD2UvWVip4fgTXMC6YJ5h9w8dxKsgp81HqbQLdXErZu85V+KRPJYLNEGmuYo7TClCLYqYFW0BQX9vgLenS4mxgq5UzaIUSMTiY1pyiaPYejZhJ8dB5TCZTyQR1Ngf4TOr9w3AnB96uHgu4OIL7QPR56G9K3QNT18ZD3ruttC7RyqZBOX/qJf/gSe5P3xOjBG/5HYHRs5tC+E8rwydOdo2tBysP8wNDqNNbdO53y1SHgSH1Sa8elbRx0WIRS2+No+aa0LmlhXeLDHDfFhDxC7OdL9l+ev49PJAoUG8sB7BXx0SZNE6tjkeZZFDd1C4apydckmpDKcmCh4lV5bd9w=
+  file: dist/*
+  on:
+    repo: hallowf/shortcut-cheat-system
