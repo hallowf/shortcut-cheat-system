@@ -2,56 +2,99 @@ import json
 import time
 import os
 import sys
+import platform
 
 import psutil
 import keyboard
 
-from .exceptions import CheatsMissing, ProcessError
+from .backend_exceptions import CheatsMissing, ProcessError
+# Due to my terrible c type conversion
+# writter args on windows writter(string: pid, int: address, int: value)
+# writter args on linux writter(int: pid, int: address, int: value)
+from .c_writter import writter
 
 class Backend(object):
-    """Requires game name and cheats
-       Cheats are a dict with hotkey, address and value"""
-    def __init__(self, game_name, check=False):
+    """----------------------------------------------------
+        Requires game name and cheats
+        Cheats are a dict with hotkey, address and value
+        game name can be overriden by simply:
+            Backend.re_hook_keys("new_name")
+        if the game is not found this raises a KeyError
+    -------------------------------------------------------"""
+    def __init__(self, game_name, p_name, cheats_file, check=False):
         super(Backend, self).__init__()
+        self.system = "windows" if platform.system().lower() == "windows" else  "linux"
         if check:
             try:
-                Checker().run_all()
+                p_info = Checker(cheats_file,p_name).run_all()
+                self.pid = p_info.info["pid"]
             except (ProcessError, CheatsMissing) as e:
                 raise e
         cp = None
         try:
-            cp = CheatsParser(game_name)
-        except (JSONDecodeError, FileNotFoundError, KeyError) as e:
+            cp = CheatsParser(cheats_file)
+            cp.cheats[game_name]
+        except (FileNotFoundError, KeyError, Exception) as e:
             raise e
-        cheats = cp.game_cheats
         self.game_name = game_name
-        self.cheats = cheats
-        self.combs = [comb.lower() for comb in cheats]
+        self.cheats = cp.cheats
+        self.hooked = False
+        
 
+    # For hoooking the hotkeys found in cheats.json
     def hook_hotkeys(self):
-        self.handles = []
-        for comb in self.combs:
-            a = keyboard.add_hotkey(comb, print, args=(self.cheats[comb][0], self.cheats[comb][1]))
-            self.handles.append(a)
+        handles = []
+        game_cheats = self.cheats[self.game_name]
+        combs = [comb.lower() for comb in game_cheats]
+        for comb in combs:
+            a = keyboard.add_hotkey(comb, self.func_hotkey, args=(comb, game_cheats[comb]))
+            handles.append(a)
+        self.handles = handles
+        self.hooked = True
         # TODO: this does not seem to work with keyboard.wait(key)
-        # maybe use wait within class
         # exit_handle = keyboard.add_hotkey("ctrl+p+e", sys.exit, args=(0))
         # self.handles.append(exit_handle)
 
+    def func_hotkey(self, key, value_s):
+        if isinstance(value_s[0], list):
+            for val in value_s:
+                if self.system == "windows":
+                    writter(str(self.pid), int(val[0], 0), val[1])
+                elif self.system == "linux":
+                    writter(self.pid, int(val[0], 0), val[1])
+        else:
+            if self.system == "windows":
+                writter(str(self.pid), int(val[0], 0), val[1])
+            elif self.system == "linux":
+                writter(self.pid, int(val[0], 0), val[1])
 
+    def re_hook_keys(self, new_game):
+        if self.hooked:
+            self.unhook_keys()
+        self.game_name = new_game
+        try:
+            self.cheats[self.game_name]
+        except KeyError as e:
+            raise e
+        self.hook_hotkeys()
+
+    # Unhooks all hotkeys
     def unhook_keys(self):
         keyboard.unhook_all_hotkeys()
+        self.handles = []
 
-    def __exit__(self):
+    def __exit__(self, tp, val, tb):
         keyboard.unhook_all_hotkeys()
 
 class Checker(object):
 
-    def __init__(self):
+    def __init__(self, cheats_file, p_name):
         self.restarts = 0
+        self.p_name = p_name
+        self.cheats_file = cheats_file
 
     def check_cheats(self):
-        if not os.path.isfile("cheats.json"):
+        if not os.path.isfile(self.cheats_file):
             return False
         else:
             return True
@@ -61,12 +104,11 @@ class Checker(object):
         for proc in psutil.process_iter(attrs=['pid', 'name']):
             try:
                 # Check if process name contains the given name string.
-                if "pcsx2" in proc.info["name"].lower():
+                if self.p_name in proc.info["name"].lower():
                     self.proc = proc
-                    return proc
-            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess) as e:
-                time.sleep(5)
-                if self.restarts >= 4:
+            except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                time.sleep(3)
+                if self.restarts > 3 or self.restarts < 0:
                     return False
                 else:
                     self.restarts = self.restarts + 1
@@ -83,23 +125,26 @@ class Checker(object):
 
 class CheatsParser(object):
     """docstring for CheatsParser."""
-    def __init__(self,game_name):
-        self.game_name = game_name
+    def __init__(self, cheats_file):
         try:
-            with open("cheats.json", "r") as f:
+            with open(cheats_file, "r") as f:
                 try:
                     self.cheats = json.load(f)
                 except Exception as e:
                     raise e
         except FileNotFoundError:
-            raise FileNotFoundError
-        try:
-            self.game_cheats = self.find_cheats(self.game_name)
-        except KeyError:
-            raise KeyError
+            raise CheatsMissing
+        self.clean_cheats()
 
-    def find_cheats(self, game_name):
-        try:
-            return self.cheats[game_name]
-        except KeyError:
-            raise KeyError
+    # Iterates trough each game finds all cheats and adds 0x to the address
+    # in case the user forgot..
+    def clean_cheats(self):
+        for game in self.cheats:
+            for key in self.cheats[game]:
+                if isinstance(self.cheats[game][key][0], list):
+                    for idx, cheat in enumerate(self.cheats[game][key]):
+                        if not cheat[0].startswith("0x"):
+                            self.cheats[game][key][idx][0] = "0x%s" % cheat[0]
+                else:
+                    if not self.cheats[game][key][0].startswith("0x"):
+                        self.cheats[game][key][0] = "0x%s" % self.cheats[game][key][0]
