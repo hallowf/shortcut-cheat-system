@@ -15,14 +15,16 @@ from .c_writter import writter
 
 class Backend(object):
     """----------------------------------------------------
-        Requires process name, game name and cheats file
+        Requires process name, end combination, game name and cheats file
         Process name does not require the full name
         Cheats are a dict with hotkey, address and value
         game name can be overriden by simply:
             Backend.re_hook_keys("new_name")
         if the game is not found this raises a KeyError
+        end combination is a string with the keys to be pressed
+        for the listener to stop Ex: "ctrl+p+e"
     -------------------------------------------------------"""
-    def __init__(self, p_name, cheats_file, game_name, check=True):
+    def __init__(self, p_name, cheats_file, game_name, end_comb, check=True):
         super(Backend, self).__init__()
         self.system = "windows" if platform.system().lower() == "windows" else  "linux"
         if check:
@@ -40,6 +42,7 @@ class Backend(object):
         self.game_name = game_name
         self.cheats = cp.cheats
         self.hooked = False
+        self.end_comb = end_comb
         
 
     # For hoooking the hotkeys found in cheats.json
@@ -50,7 +53,7 @@ class Backend(object):
         for comb in combs:
             a = keyboard.add_hotkey(comb, self.func_hotkey, args=(comb, game_cheats[comb]))
             handles.append(a)
-        a = keyboard.add_hotkey("ctrl+p+e", self.exit_key)
+        a = keyboard.add_hotkey(self.end_comb, self.exit_key)
         self.handles = handles
         self.hooked = True
         # TODO: this does not seem to work with keyboard.wait(key)

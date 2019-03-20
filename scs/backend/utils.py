@@ -1,4 +1,4 @@
-import sys, struct, time
+import sys, struct, time, string
 from backend.backend_exceptions import NoHeapFound, HeapPermissionError
 
 class KeyListener(object):
@@ -17,6 +17,22 @@ class KeyListener(object):
         self.logger.AppendText("%s: %s\n" % (k_text,k_str))
         time.sleep(0.14) # To avoid GTK crashes
 
+def verify_shortcut(shortcut):
+    has_passed = True
+    shortcut = shortcut.lower()
+    if shortcut.starstwith("+") or shortcut.endswith("+"):
+        has_passed = False
+    if not has_passed:
+        short_keys = shortcut.split("+")
+        possible_keys = list(string.ascii_lowercase)
+        special_keys = ["ctrl","shift","tab","home","insert","end","delete", "pause"]
+        possible_keys.extend(special_keys)
+        for key in short_keys:
+            if not has_passed:
+                break
+            if key not in possible_keys:
+                has_passed = False
+    return has_passed
 
 def read_write_heap(pid, address, newValue):
     sys.stdout.write("This is unfinished use it at your own risk\n")
