@@ -1,27 +1,27 @@
-import ctypes, re, sys, struct
+import sys, struct
 from backend_exceptions import NoHeapFound, HeapPermissionError
 
-class KeystrokeCheatMapper(object):
-    """docstring for KeystrokeCheatMapper."""
-    def __init__(self):
-        super(KeystrokeCheatMapper, self).__init__()
-        self.current_comb = []
-        self.exit_comb = ["CTRL_L", "P", "E"]
-        self.exit_comb = [key.upper() for key in self.exit_comb]
+class KeyListener(object):
+    """docstring for KeyListener."""
+    def __init__(self, logger):
+        super(KeyListener, self).__init__()
+        self.logger = logger
 
     def on_press(self, key):
         try:
             k_str = str(key.char).upper()
-            self.current_comb.append(k_str.upper())
+            self.logger.AppendText("Pressed: %s\n" % k_str)
         except AttributeError:
             k_str = str(key.name).upper()
-            self.current_comb.append(k_str)
+            self.logger.AppendText("Pressed: %s\n" % k_str)
 
     def on_release(self, key):
-        if self.current_comb == self.exit_comb:
-            # Stop listener
-            return False
-        self.current_comb = [] if self.current_comb != [] else self.current_comb
+        try:
+            k_str = str(key.char).upper()
+            self.logger.AppendText("Released: %s\n" % k_str)
+        except AttributeError:
+            k_str = str(key.name).upper()
+            self.logger.AppendText("Released: %s\n" % k_str)
 
 def read_write_heap(pid, address, newValue):
     """Replace value at @address with @newValue, @pid is for location process"""

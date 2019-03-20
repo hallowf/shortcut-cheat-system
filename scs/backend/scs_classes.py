@@ -15,7 +15,7 @@ from .c_writter import writter
 
 class Backend(object):
     """----------------------------------------------------
-        Requires process name game name and cheats file
+        Requires process name, game name and cheats file
         Process name does not require the full name
         Cheats are a dict with hotkey, address and value
         game name can be overriden by simply:
@@ -43,18 +43,23 @@ class Backend(object):
         
 
     # For hoooking the hotkeys found in cheats.json
-    def hook_hotkeys(self):
+    def hook_keys(self):
         handles = []
         game_cheats = self.cheats[self.game_name]
         combs = [comb.lower() for comb in game_cheats]
         for comb in combs:
             a = keyboard.add_hotkey(comb, self.func_hotkey, args=(comb, game_cheats[comb]))
             handles.append(a)
+        a = keyboard.add_hotkey("ctrl+p+e", self.exit_key)
         self.handles = handles
         self.hooked = True
         # TODO: this does not seem to work with keyboard.wait(key)
         # exit_handle = keyboard.add_hotkey("ctrl+p+e", sys.exit, args=(0))
         # self.handles.append(exit_handle)
+
+    def exit_key(self):
+        keyboard.unhook_all_hotkeys()
+        self.handles = []
 
     def func_hotkey(self, key, value_s):
         if isinstance(value_s[0], list):
@@ -77,7 +82,7 @@ class Backend(object):
             self.cheats[self.game_name]
         except KeyError as e:
             raise e
-        self.hook_hotkeys()
+        self.hook_keys()
 
     # Unhooks all hotkeys
     def unhook_keys(self):
@@ -105,8 +110,9 @@ class Checker(object):
         for proc in psutil.process_iter(attrs=['pid', 'name']):
             try:
                 # Check if process name contains the given name string.
-                if self.p_name in proc.info["name"].lower():
+                if self.p_name.lower() in proc.info["name"].lower():
                     self.proc = proc
+                    return True
             except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                 time.sleep(3)
                 if self.restarts > 3 or self.restarts < 0:
