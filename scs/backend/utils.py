@@ -1,5 +1,5 @@
 import sys, struct
-from backend_exceptions import NoHeapFound, HeapPermissionError
+from backend.backend_exceptions import NoHeapFound, HeapPermissionError
 
 class KeyListener(object):
     """docstring for KeyListener."""
@@ -7,21 +7,15 @@ class KeyListener(object):
         super(KeyListener, self).__init__()
         self.logger = logger
 
-    def on_press(self, key):
+    def log_key(self, key):
+        k_text = "Pressed" if key.event_type == "down" else "Released"
         try:
             k_str = str(key.char).upper()
-            self.logger.AppendText("Pressed: %s\n" % k_str)
+            self.logger.AppendText("%s: %s\n" % (k_text,k_str))
         except AttributeError:
             k_str = str(key.name).upper()
-            self.logger.AppendText("Pressed: %s\n" % k_str)
+            self.logger.AppendText("%s: %s\n" % (k_text,k_str))
 
-    def on_release(self, key):
-        try:
-            k_str = str(key.char).upper()
-            self.logger.AppendText("Released: %s\n" % k_str)
-        except AttributeError:
-            k_str = str(key.name).upper()
-            self.logger.AppendText("Released: %s\n" % k_str)
 
 def read_write_heap(pid, address, newValue):
     """Replace value at @address with @newValue, @pid is for location process"""
@@ -77,6 +71,3 @@ def read_write_heap(pid, address, newValue):
 
         # there is only one heap in our example
         break
-
-
-read_write_heap(9615, 0x2069c314, 20000)
