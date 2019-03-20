@@ -1,4 +1,4 @@
-import wx, keyboard, pickle, os
+import wx, wx.adv, keyboard, pickle, os
 
 from backend.backend_exceptions import CheatsMissing, ProcessError
 from backend.scs_classes import Backend
@@ -29,7 +29,7 @@ class MainWindow(wx.Frame):
 
         # Creating the menubar.
         menu_bar = wx.MenuBar()
-        menu_bar.Append(filemenu,"&File") # Adding the "filemenu" to the MenuBar
+        menu_bar.Append(filemenu,"&Main") # Adding the "filemenu" to the MenuBar
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
 
 
@@ -43,40 +43,44 @@ class MainWindow(wx.Frame):
 
         ## main_grid -----------------------------------
         # Logger
-        self.logger = wx.TextCtrl(self, size=(300,225), style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.logger = wx.TextCtrl(self, size=(360,225), style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.logger.SetBackgroundColour((3, 62, 78))
         self.logger.SetForegroundColour((172, 180, 182))
 
         # add a spacer to the sizer
-        main_grid.Add((10, 20), pos=(0,0))
+        main_grid.Add((160, 20), pos=(0,0))
 
         # Proccess name input
         self.proc_name = wx.StaticText(self, label="Process name:")
-        self.proc_name.SetForegroundColour("MIDNIGHT BLUE")
+        self.proc_name.SetForegroundColour((0,0,0))
         main_grid.Add(self.proc_name, pos=(1,0))
         self.proc_name_input = wx.TextCtrl(self, value="", size=(140,-1))
         main_grid.Add(self.proc_name_input, pos=(1,1))
 
         # Cheats file
         self.cheats_file = wx.StaticText(self, label="Cheats file:")
-        self.cheats_file.SetForegroundColour("MIDNIGHT BLUE")
+        self.cheats_file.SetForegroundColour((0,0,0))
         main_grid.Add(self.cheats_file, pos=(2,0))
         self.cheats_file_input = wx.Button(self, label="Open")
         main_grid.Add(self.cheats_file_input, pos=(2,1))
 
         # Game input
         self.game_name = wx.StaticText(self, label="Game name:")
-        self.game_name.SetForegroundColour("MIDNIGHT BLUE")
+        self.game_name.SetForegroundColour((0,0,0))
         main_grid.Add(self.game_name, pos=(3,0))
         self.game_name_input = wx.TextCtrl(self, value="", size=(140,-1))
         main_grid.Add(self.game_name_input, pos=(3,1))
         
         # Terminate command input
         self.end_comb = wx.StaticText(self, label="Terminate shortcut:")
-        self.end_comb.SetForegroundColour("MIDNIGHT BLUE")
+        self.end_comb.SetForegroundColour((0,0,0))
         main_grid.Add(self.end_comb, pos=(4,0))
         self.end_comb_input = wx.TextCtrl(self, value="Ex: p+e or esc", size=(140,-1))
         main_grid.Add(self.end_comb_input, pos=(4,1))
+
+        # Show values button
+        self.show_button = wx.Button(self, label="Show values")
+        main_grid.Add(self.show_button, pos=(6,0))
 
         ## button_grid -----------------------------------
         # Hook button
@@ -87,16 +91,17 @@ class MainWindow(wx.Frame):
         self.unhook_button = wx.Button(self, label="Unhook")
         button_grid.Add(self.unhook_button, pos=(1,1))
 
-        # add a spacer between button
-        button_grid.Add((55, 10), pos=(1,2))
+        # Unhook button
+        self.rehook_button = wx.Button(self, label="Rehook")
+        button_grid.Add(self.rehook_button, pos=(1,2))
 
         # Clean log button
         self.clean_button = wx.Button(self, label="Clean")
-        button_grid.Add(self.clean_button, pos=(1,3))
+        button_grid.Add(self.clean_button, pos=(1,5))
 
         # Test key logging
         self.test_key = wx.Button(self, label="Test keys")
-        button_grid.Add(self.test_key, pos=(1,4))
+        button_grid.Add(self.test_key, pos=(1,6))
 
         # Add everything to content_box
         main_box.Add(main_grid, 0, wx.ALL, 5)
@@ -113,7 +118,9 @@ class MainWindow(wx.Frame):
         ## Buttons
         self.Bind(wx.EVT_BUTTON, self.on_open_cheats, self.cheats_file_input)
         self.Bind(wx.EVT_BUTTON, self.on_hook,self.hook_button)
+        self.Bind(wx.EVT_BUTTON, self.on_show,self.show_button)
         self.Bind(wx.EVT_BUTTON, self.on_unhook,self.unhook_button)
+        self.Bind(wx.EVT_BUTTON, self.on_rehook,self.rehook_button)
         self.Bind(wx.EVT_BUTTON, self.on_clean,self.clean_button)
         self.Bind(wx.EVT_BUTTON, self.on_test,self.test_key)
 
@@ -164,13 +171,14 @@ class MainWindow(wx.Frame):
         return True
 
     # To rehook hotkeys
-    def on_re_hook(self,e):
+    def on_rehook(self,e):
         game_name = self.game_name_input.GetLineText(0).strip()
         if not self.scs_backend:
             self.logger.AppendText("Keyboard not hooked..\n")
         else:
             self.logger.AppendText('"Re-hooking" shortcuts\n')
             self.scs_backend.re_hook_keys(game_name)
+            self.SetStatusText("Keyboard hooked")
 
     # This unhooks the keyboard and terminates the backend
     def on_unhook(self,e):
@@ -180,18 +188,24 @@ class MainWindow(wx.Frame):
             self.logger.AppendText('"Un-hooking" shortcuts and terminating backend\n')
             self.scs_backend.unhook_keys()
             self.scs_backend = None
+            self.SetStatusText("Keyboard unhooked")
 
     # To hook the keyboard
     def on_hook(self,e):
         if not self.check_inputs():
             return
+        if self.keys_hooked:
+            self.logger.AppendText("Keyboard already hooked\n")
+            return
         game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
         try:
-            self.logger.AppendText("Starting backend, parameters:\n\tProcess:%s\n\tGame name:%s\n" % (proc_name, game_name))
+            self.logger.AppendText("Starting backend, parameters:\n\tProcess: %s\n\tCheats File: %s\n\tGame name: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,game_name,end_comb))
             self.scs_backend = Backend(proc_name, self.cheats_file_path, game_name, end_comb)
             self.scs_backend.hook_keys()
+            self.keys_hooked = True
+            self.SetStatusText("Keyboard hooked")
         except Exception as e:
             e_name = e.__class__.__name__
             e_str = ""
@@ -204,6 +218,12 @@ class MainWindow(wx.Frame):
             else:
                 e_str = str(e)
             self.logger.AppendText(e_str + "\n")
+
+    def on_show(self, e):
+        game_name = self.game_name_input.GetLineText(0).strip()
+        proc_name = self.proc_name_input.GetLineText(0).strip()
+        end_comb = self.end_comb_input.GetLineText(0).strip()
+        self.logger.AppendText("Parameters:\n\tProcess: %s\n\tCheats File: %s\n\tGame name: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,game_name,end_comb))
 
     def on_clean(self,e):
         self.logger.SetValue("")
@@ -226,17 +246,15 @@ class MainWindow(wx.Frame):
                 self.keys_hooked = False
         else:
             self.logger.AppendText("Hooking keys\n")
-            self.logger.AppendText("There is a 0.14 second delay plus the time it takes to write text to here\nThe delay only aplies to this test.")
+            self.logger.AppendText("There is a 0.16 second delay plus the time it takes to write text to here\nThis only shows 15 keystrokes before cleaning the log\nThe delay only aplies to this test.")
             self.logger.AppendText("If you spam the keyboard this will probably lag or crash....\n")
             self.keys_hooked = True
             listener = KeyListener(self.logger)
             self.keyboard_hook = keyboard.hook(listener.log_key)
 
 
-    def on_about(self, e):
-        dlg = wx.MessageDialog( self, "SCS - Shortcut Cheat System, built with python and wxpython", "About SCS", wx.OK)
-        dlg.ShowModal()
-        dlg.Destroy()
+    def on_about(self, event):
+        AboutDialog(self, "About SCS").ShowModal()
 
     def on_save(self,e):
         game_name = self.game_name_input.GetLineText(0).strip()
@@ -258,3 +276,28 @@ class MainWindow(wx.Frame):
     def on_exit(self,e):
         keyboard.unhook_all()
         self.Close(True)
+
+
+class AboutDialog(wx.Dialog): 
+   def __init__(self, parent, title): 
+        super(AboutDialog, self).__init__(parent, title = title, size = (500,250))
+        panel = wx.Panel(self) # Panel
+        # Sizers
+        content_box = wx.BoxSizer(wx.VERTICAL)
+        main_grid = wx.GridBagSizer(hgap=5, vgap=5)
+
+        about_text = "\nSCS - Shortcut Cheat System\nbuilt with python and wxPython\n\n\n"
+        warn_text = "Warning: This program makes no attempt to hide itself,\nso don't use it for online-play. Be responsible.\n\n\n"
+        homepage = "Homepage\nhttps://github.com/hallowf/shortcut-cheat-system"
+        about_text_ctrl = wx.TextCtrl(self, size=(450,240), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_CENTRE)
+        about_text_ctrl.AppendText(about_text)
+        about_text_ctrl.AppendText(warn_text)
+        about_text_ctrl.AppendText(homepage)
+
+        self.ok_button = wx.Button(self, wx.ID_OK, label = "close")
+        main_grid.Add(self.ok_button, pos=(0,0))
+        # Add to content BoxSizer
+        content_box.Add(about_text_ctrl)
+        content_box.Add(main_grid, 0, wx.ALL, 5)
+        self.SetSizerAndFit(content_box)
+    

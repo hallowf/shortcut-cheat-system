@@ -6,6 +6,7 @@ class KeyListener(object):
     def __init__(self, logger):
         super(KeyListener, self).__init__()
         self.logger = logger
+        self.keys = 0
 
     def log_key(self, key):
         k_text = "D" if key.event_type == "down" else "U"
@@ -15,7 +16,11 @@ class KeyListener(object):
         except AttributeError:
             k_str = str(key.name).upper()
         self.logger.AppendText("%s: %s\n" % (k_text,k_str))
-        time.sleep(0.14) # To avoid GTK crashes
+        self.keys = self.keys + 1 
+        if self.keys >= 30:
+            self.logger.SetValue("")
+            self.keys = 0
+        time.sleep(0.16) # To avoid GTK crashes
 
 def verify_shortcut(shortcut):
     has_passed = True
@@ -25,7 +30,7 @@ def verify_shortcut(shortcut):
     if not has_passed:
         short_keys = shortcut.split("+")
         possible_keys = list(string.ascii_lowercase)
-        special_keys = ["ctrl","shift","tab","home","insert","end","delete", "pause"]
+        special_keys = ["ctrl","shift","tab","home","insert","end","delete","pause"]
         possible_keys.extend(special_keys)
         for key in short_keys:
             if not has_passed:
