@@ -57,6 +57,8 @@ sudo make install
 ### Notes:
 1. keyboard doesn't differentiate order
  * so 123 is the same as 321
+2. Not having a delay causes the app to crash when testing keys
+ * this is probably due to the way AppendText works
 
 #### Limitations:
 1. [Keyboard](https://github.com/boppreh/keyboard#known-limitations)

@@ -6,3 +6,4 @@ Debug
 *.pyd
 *.pyc
 *.so
+*.pckl
