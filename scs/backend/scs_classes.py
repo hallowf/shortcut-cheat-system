@@ -15,13 +15,14 @@ from .c_writter import writter
 
 class Backend(object):
     """----------------------------------------------------
-        Requires game name and cheats
+        Requires process name game name and cheats file
+        Process name does not require the full name
         Cheats are a dict with hotkey, address and value
         game name can be overriden by simply:
             Backend.re_hook_keys("new_name")
         if the game is not found this raises a KeyError
     -------------------------------------------------------"""
-    def __init__(self, game_name, p_name, cheats_file, check=False):
+    def __init__(self, p_name, cheats_file, game_name, check=True):
         super(Backend, self).__init__()
         self.system = "windows" if platform.system().lower() == "windows" else  "linux"
         if check:
@@ -134,11 +135,11 @@ class CheatsParser(object):
                     raise e
         except FileNotFoundError:
             raise CheatsMissing
-        self.clean_cheats()
+        self.fix_addresses()
 
     # Iterates trough each game finds all cheats and adds 0x to the address
     # in case the user forgot..
-    def clean_cheats(self):
+    def fix_addresses(self):
         for game in self.cheats:
             for key in self.cheats[game]:
                 if isinstance(self.cheats[game][key][0], list):
