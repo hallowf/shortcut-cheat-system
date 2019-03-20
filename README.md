@@ -1,3 +1,7 @@
+### Disclaimer:
+From the keyboard github page:
+>This program makes no attempt to hide itself, so don't use it for keyloggers or online gaming bots. Be responsible.
+
 ### Building requirements
 **python3.6(32 or 64bit)**
 **pybind11**
@@ -24,6 +28,10 @@
 
 `pip install -r requirements.txt`
 
+for wxPython it's faster to fetch the [wheel](https://extras.wxpython.org/wxPython4/extras/linux/gtk3) and install it directly
+`pip install wxPython-version-OS_bits.whl`
+
+
 #### Building pybind11
 
 1. Windows:
@@ -49,3 +57,6 @@ sudo make install
 ### Notes:
 1. keyboard doesn't differentiate order
  * so 123 is the same as 321
+
+#### Limitations:
+1. [Keyboard](https://github.com/boppreh/keyboard#known-limitations)
