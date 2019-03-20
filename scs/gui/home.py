@@ -194,15 +194,19 @@ class MainWindow(wx.Frame):
                 try:
                     keyboard.unhook(self.keyboard_hook)
                     self.logger.AppendText("Unhooked\n")
+                    self.keys_hooked = False
                 except KeyError:
-                    continue # Continue the statement to else
+                    self.logger.AppendText("Failed to unhook listener, unhooking all keyboard listeners\n") 
+                    keyboard.unhook_all()
+                    self.keys_hooked = False
             else:
-                self.logger.AppendText("Failed to find hook unhooking all keyboard listeners\n")
+                self.logger.AppendText("Failed to find hook, unhooking all keyboard listeners\n")
                 keyboard.unhook_all()
-            self.keys_kooked = False
-            return
+                self.keys_hooked = False
         else:
             self.logger.AppendText("Hooking keys\n")
+            self.logger.AppendText("There is a 0.14 second delay plus the time it takes to write text to here\n")
+            self.logger.AppendText("If you spam the keyboard this will probably lag or crash....\n")
             self.keys_hooked = True
             listener = KeyListener(self.logger)
             self.keyboard_hook = keyboard.hook(listener.log_key)

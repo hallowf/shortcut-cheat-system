@@ -1,4 +1,4 @@
-import sys, struct
+import sys, struct, time
 from backend.backend_exceptions import NoHeapFound, HeapPermissionError
 
 class KeyListener(object):
@@ -8,16 +8,18 @@ class KeyListener(object):
         self.logger = logger
 
     def log_key(self, key):
-        k_text = "Pressed" if key.event_type == "down" else "Released"
+        k_text = "D" if key.event_type == "down" else "U"
+        k_str = ""
         try:
             k_str = str(key.char).upper()
-            self.logger.AppendText("%s: %s\n" % (k_text,k_str))
         except AttributeError:
             k_str = str(key.name).upper()
-            self.logger.AppendText("%s: %s\n" % (k_text,k_str))
+        self.logger.AppendText("%s: %s\n" % (k_text,k_str))
+        time.sleep(0.14) # To avoid GTK crashes
 
 
 def read_write_heap(pid, address, newValue):
+    sys.stdout.write("This is unfinished use it at your own risk\n")
     """Replace value at @address with @newValue, @pid is for location process"""
     maps_filename = "/proc/{}/maps".format(pid)
     print("[*] maps: {}".format(maps_filename))
