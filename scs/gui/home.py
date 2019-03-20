@@ -6,7 +6,8 @@ from backend.scs_classes import Backend
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
         # Backend stuff --------------------
-        self.backend = None
+        self.scs_backend = None
+        self.cheats_file = None
         # Main components ------------------
         wx.Frame.__init__(self, parent, title=title, size=(500,600))
         self.CreateStatusBar() # A Statusbar in the bottom of the window
@@ -37,7 +38,7 @@ class MainWindow(wx.Frame):
 
 
         # Logger
-        self.logger = wx.TextCtrl(self, size=(300,200), style=wx.TE_MULTILINE | wx.TE_READONLY)
+        self.logger = wx.TextCtrl(self, size=(300,225), style=wx.TE_MULTILINE | wx.TE_READONLY)
         self.logger.SetBackgroundColour((3, 62, 78))
         self.logger.SetForegroundColour((172, 180, 182))
 
@@ -52,28 +53,37 @@ class MainWindow(wx.Frame):
         self.proc_name_input = wx.TextCtrl(self, value="", size=(140,-1))
         grid.Add(self.proc_name_input, pos=(1,1))
 
+        # Cheats file
+        self.cheats_file = wx.StaticText(self, label="Cheats file:")
+        self.cheats_file.SetForegroundColour("MIDNIGHT BLUE")
+        grid.Add(self.cheats_file, pos=(2,0))
+        self.cheats_file_input = wx.Button(self, label="Open")
+        self.Bind(wx.EVT_BUTTON, self.on_open_cheats, self.cheats_file_input)
+        grid.Add(self.cheats_file_input, pos=(2,1))
+
         # Game input
         self.game_name = wx.StaticText(self, label="Game name:")
         self.game_name.SetForegroundColour("MIDNIGHT BLUE")
-        grid.Add(self.game_name, pos=(2,0))
+        grid.Add(self.game_name, pos=(3,0))
         self.game_name_input = wx.TextCtrl(self, value="", size=(140,-1))
-        grid.Add(self.game_name_input, pos=(2,1))
+        grid.Add(self.game_name_input, pos=(3,1))
+        
 
         # Terminate command input
         self.end_command = wx.StaticText(self, label="Terminate shortcut:")
         self.end_command.SetForegroundColour("MIDNIGHT BLUE")
-        grid.Add(self.end_command, pos=(3,0))
+        grid.Add(self.end_command, pos=(4,0))
         self.end_command_input = wx.TextCtrl(self, value="Ex: p+e or esc", size=(140,-1))
-        grid.Add(self.end_command_input, pos=(3,1))
+        grid.Add(self.end_command_input, pos=(4,1))
 
         # another spacer
-        grid.Add((10, 50), pos=(4,0))
+        grid.Add((10, 20), pos=(5,0))
 
 
         # Run button
         self.run_button = wx.Button(self, label="Run")
         self.Bind(wx.EVT_BUTTON, self.on_run,self.run_button)
-        grid.Add(self.run_button, pos=(5,0))
+        grid.Add(self.run_button, pos=(6,0))
 
 
 
@@ -92,13 +102,21 @@ class MainWindow(wx.Frame):
         # Show
         self.Show()
 
+    def on_open_cheats(self, e):
+         # otherwise ask the user what new file to open
+        with wx.FileDialog(self, "Open cheats file", wildcard=".json files (*.json)|*.json",
+                        style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as fileDialog:
+            if fileDialog.ShowModal() == wx.ID_CANCEL:
+                return     # the user changed their mind
+            # get the path
+            self.cheats_file = fileDialog.GetPath()
+            self.logger.AppendText("Path of cheats file is:\n%s" % self.cheats_file)
 
     def on_run(self,e):
         game_name = self.game_name_input.GetLineText(0)
         proc_name = self.proc_name_input.GetLineText(0)
         try:
-            self.backend = Backend(game_name, proc_name, True)
-            self.backend.find_cheats(game_name)
+            self.backend = Backend(proc_name, self.cheats_file, game_name)
         except Exception as e:
             e_name = e.__class__.__name__
             e_str = ""
