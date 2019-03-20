@@ -1,7 +1,5 @@
 import wx
-from gui.main_gui import MainWindow
-
-from .run_back import run_back
+from gui.home import MainWindow
 
 def run_main():
     app = wx.App(False)
