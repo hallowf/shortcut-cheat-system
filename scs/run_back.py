@@ -6,9 +6,9 @@ from backend.scs_classes import Backend
 if __name__ == '__main__':
     do_exit = False
     try:
-        b = Backend("Godfather", "pcsx2", "cheats.json", True)
+        b = Backend("pcsx2", "cheats.json", "Godfather",  "ctrl+p+e", True)
         b.hook_keys()
-        print("Running")
+        print("Running...\nPress ctrl+p+e or esc to exit")
         keyboard.wait('esc')
         print("exiting")
         sys.exit(0)
