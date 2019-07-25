@@ -7,3 +7,5 @@ Debug
 *.pyc
 *.so
 *.pckl
+*.whl
+*.pylintrc

@@ -3,6 +3,7 @@ import wx, wx.adv, keyboard, pickle, os
 from backend.backend_exceptions import CheatsMissing, ProcessError
 from backend.scs_classes import Backend
 from backend.utils import KeyListener, verify_shortcut
+from gui.dialogs import AboutDialog, BasicUsageDialog
 from wx._core import StaticText
 
 class MainWindow(wx.Frame):
@@ -18,18 +19,25 @@ class MainWindow(wx.Frame):
         panel = wx.Panel(self) # Main Panel
         self.SetBackgroundColour('grey')
 
-        # Setting up the menu.
+        # Setting up the menus.
         filemenu = wx.Menu()
+        help_menu = wx.Menu()
 
+        # Main menu
         # wx.ID_ABOUT and wx.ID_EXIT are standard IDs provided by wxWidgets.
         menu_about = filemenu.Append(wx.ID_ABOUT, "&About","Information about this program")
         menu_save = filemenu.Append(wx.ID_SAVE, '&Save', "Save current values")
         filemenu.AppendSeparator()
         menu_exit = filemenu.Append(wx.ID_EXIT,"&Exit","Terminate the program")
 
+        # Help menu
+        help_usage = help_menu.Append(wx.ID_HELP, "&Usage", "Basic usage")
+        help_debug = help_menu.Append(wx.ID_ANY, "&Debug", "Debugging the program")
+
         # Creating the menubar.
         menu_bar = wx.MenuBar()
         menu_bar.Append(filemenu,"&Main") # Adding the "filemenu" to the MenuBar
+        menu_bar.Append(help_menu,"&Help") # Adding the "help_menu" to the MenuBar
         self.SetMenuBar(menu_bar)  # Adding the MenuBar to the Frame content.
 
 
@@ -115,6 +123,8 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_MENU, self.on_about, menu_about)
         self.Bind(wx.EVT_MENU, self.on_save, menu_save)
         self.Bind(wx.EVT_MENU, self.on_exit, menu_exit)
+        self.Bind(wx.EVT_MENU, self.on_help, help_usage)
+        self.Bind(wx.EVT_MENU, self.on_debug, help_debug)
         ## Buttons
         self.Bind(wx.EVT_BUTTON, self.on_open_cheats, self.cheats_file_input)
         self.Bind(wx.EVT_BUTTON, self.on_hook,self.hook_button)
@@ -219,15 +229,18 @@ class MainWindow(wx.Frame):
                 e_str = str(e)
             self.logger.AppendText(e_str + "\n")
 
+    # Show current values
     def on_show(self, e):
         game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
         self.logger.AppendText("Parameters:\n\tProcess: %s\n\tCheats File: %s\n\tGame name: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,game_name,end_comb))
 
+    # Clean logger
     def on_clean(self,e):
         self.logger.SetValue("")
 
+    # Hook keyboard and print to logger
     def on_test(self,e):
         if self.keys_hooked:
             self.logger.AppendText("Unhooking keys\n")
@@ -252,10 +265,17 @@ class MainWindow(wx.Frame):
             listener = KeyListener(self.logger)
             self.keyboard_hook = keyboard.hook(listener.log_key)
 
+    def on_help(self,e):
+        BasicUsageDialog(self, "Basic usage").ShowWindowModal()
 
+    def on_debug(self,e):
+        self.logger.AppendText("Not implemented\n")
+
+    # Open about modal
     def on_about(self, event):
         AboutDialog(self, "About SCS").ShowModal()
 
+    # Save current setting to pickle
     def on_save(self,e):
         game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
@@ -278,26 +298,4 @@ class MainWindow(wx.Frame):
         self.Close(True)
 
 
-class AboutDialog(wx.Dialog): 
-   def __init__(self, parent, title): 
-        super(AboutDialog, self).__init__(parent, title = title, size = (500,250))
-        panel = wx.Panel(self) # Panel
-        # Sizers
-        content_box = wx.BoxSizer(wx.VERTICAL)
-        main_grid = wx.GridBagSizer(hgap=5, vgap=5)
-
-        about_text = "\nSCS - Shortcut Cheat System\nbuilt with python and wxPython\n\n\n"
-        warn_text = "Warning: This program makes no attempt to hide itself,\nso don't use it for online-play. Be responsible.\n\n\n"
-        homepage = "Homepage\nhttps://github.com/hallowf/shortcut-cheat-system"
-        about_text_ctrl = wx.TextCtrl(self, size=(450,240), style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_CENTRE)
-        about_text_ctrl.AppendText(about_text)
-        about_text_ctrl.AppendText(warn_text)
-        about_text_ctrl.AppendText(homepage)
-
-        self.ok_button = wx.Button(self, wx.ID_OK, label = "close")
-        main_grid.Add(self.ok_button, pos=(0,0))
-        # Add to content BoxSizer
-        content_box.Add(about_text_ctrl)
-        content_box.Add(main_grid, 0, wx.ALL, 5)
-        self.SetSizerAndFit(content_box)
     
