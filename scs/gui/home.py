@@ -2,7 +2,7 @@ import wx, wx.adv, keyboard, pickle, os
 
 from backend.backend_exceptions import CheatsMissing, ProcessError
 from backend.scs_classes import Backend
-from backend.utils import KeyListener, verify_shortcut
+from backend.utils import KeyListener
 from gui.dialogs import AboutDialog, BasicUsageDialog
 from wx._core import StaticText
 
@@ -71,13 +71,6 @@ class MainWindow(wx.Frame):
         main_grid.Add(self.cheats_file, pos=(2,0))
         self.cheats_file_input = wx.Button(self, label="Open")
         main_grid.Add(self.cheats_file_input, pos=(2,1))
-
-        # Game input
-        self.game_name = wx.StaticText(self, label="Game name:")
-        self.game_name.SetForegroundColour((0,0,0))
-        main_grid.Add(self.game_name, pos=(3,0))
-        self.game_name_input = wx.TextCtrl(self, value="", size=(140,-1))
-        main_grid.Add(self.game_name_input, pos=(3,1))
         
         # Terminate command input
         self.end_comb = wx.StaticText(self, label="Terminate shortcut:")
@@ -98,10 +91,6 @@ class MainWindow(wx.Frame):
         # Unhook button
         self.unhook_button = wx.Button(self, label="Unhook")
         button_grid.Add(self.unhook_button, pos=(1,1))
-
-        # Unhook button
-        self.rehook_button = wx.Button(self, label="Rehook")
-        button_grid.Add(self.rehook_button, pos=(1,2))
 
         # Clean log button
         self.clean_button = wx.Button(self, label="Clean")
@@ -130,16 +119,13 @@ class MainWindow(wx.Frame):
         self.Bind(wx.EVT_BUTTON, self.on_hook,self.hook_button)
         self.Bind(wx.EVT_BUTTON, self.on_show,self.show_button)
         self.Bind(wx.EVT_BUTTON, self.on_unhook,self.unhook_button)
-        self.Bind(wx.EVT_BUTTON, self.on_rehook,self.rehook_button)
         self.Bind(wx.EVT_BUTTON, self.on_clean,self.clean_button)
         self.Bind(wx.EVT_BUTTON, self.on_test,self.test_key)
 
         ## Check for stored settings
         if os.path.isfile("settings.pckl") and os.path.getsize("settings.pckl") > 0:
             with open("settings.pckl", "rb") as pckl:
-                to_load = pickle.load(pckl)                     
-                if to_load["game_name"]:
-                    self.game_name_input.SetValue(to_load["game_name"])
+                to_load = pickle.load(pckl)
                 if to_load["proc_name"]:
                     self.proc_name_input.SetValue(to_load["proc_name"])
                 if to_load["end_comb"]:
@@ -164,11 +150,9 @@ class MainWindow(wx.Frame):
     # Check user inputs
     def check_inputs(self):
         inputs = {}
-        game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
         inputs.update({
-            "Game name":game_name,
             "Process name":proc_name,
             "Cheats file":self.cheats_file_path
             })
@@ -176,19 +160,7 @@ class MainWindow(wx.Frame):
             if not inputs[value] or inputs[value] == "" or inputs[value] == " " or isinstance(inputs[value], StaticText):
                 self.logger.AppendText("Missing value: %s\n" % value)
                 return False
-        if not verify_shortcut(end_comb):
-            return False
         return True
-
-    # To rehook hotkeys
-    def on_rehook(self,e):
-        game_name = self.game_name_input.GetLineText(0).strip()
-        if not self.scs_backend:
-            self.logger.AppendText("Keyboard not hooked..\n")
-        else:
-            self.logger.AppendText('"Re-hooking" shortcuts\n')
-            self.scs_backend.re_hook_keys(game_name)
-            self.SetStatusText("Keyboard hooked")
 
     # This unhooks the keyboard and terminates the backend
     def on_unhook(self,e):
@@ -207,12 +179,11 @@ class MainWindow(wx.Frame):
         if self.keys_hooked:
             self.logger.AppendText("Keyboard already hooked\n")
             return
-        game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
         try:
-            self.logger.AppendText("Starting backend, parameters:\n\tProcess: %s\n\tCheats File: %s\n\tGame name: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,game_name,end_comb))
-            self.scs_backend = Backend(proc_name, self.cheats_file_path, game_name, end_comb)
+            self.logger.AppendText("Starting backend, parameters:\n\tProcess: %s\n\tCheats File: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,end_comb))
+            self.scs_backend = Backend(proc_name, self.cheats_file_path, end_comb)
             self.scs_backend.hook_keys()
             self.keys_hooked = True
             self.SetStatusText("Keyboard hooked")
@@ -221,8 +192,6 @@ class MainWindow(wx.Frame):
             e_str = ""
             if e_name == "CheatsMissing":
                 e_str = "Failed to find cheats file at %s\n" % self.cheats_file_path
-            elif e_name == "KeyError":
-                e_str = "Failed to found %s in cheats\n" % game_name
             elif e_name == "ProcessError":
                 e_str = "Failed to access process %s\n" % proc_name
             else:
@@ -231,10 +200,9 @@ class MainWindow(wx.Frame):
 
     # Show current values
     def on_show(self, e):
-        game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
-        self.logger.AppendText("Parameters:\n\tProcess: %s\n\tCheats File: %s\n\tGame name: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,game_name,end_comb))
+        self.logger.AppendText("Parameters:\n\tProcess: %s\n\tCheats File: %s\n\tTerminate shortcut: %s\n" % (proc_name,self.cheats_file_path,end_comb))
 
     # Clean logger
     def on_clean(self,e):
