@@ -3,11 +3,12 @@ import time
 import os
 import sys
 import platform
+import string
 
 import psutil
 import keyboard
 
-from .backend_exceptions import CheatsMissing, ProcessError
+from .backend_exceptions import CheatsMissing, ProcessError, InvalidShortcut
 # Due to my terrible c type conversion
 # writter args on windows writter(string: pid, int: address, int: value)
 # writter args on linux writter(int: pid, int: address, int: value)
@@ -15,46 +16,39 @@ from .c_writter import writter
 
 class Backend(object):
     """----------------------------------------------------
-        Requires process name, end combination, game name and cheats file
-        Process name does not require the full name
-        Cheats are a dict with hotkey, address and value
-        game name can be overriden by simply:
-            Backend.re_hook_keys("new_name")
-        if the game is not found this raises a KeyError
+        Requires process name, cheats file and end combination.
+        Process name does not require the full name.
+        Cheats are a json dict with: "hotkey": [address, value].
         end combination is a string with the keys to be pressed
-        for the listener to stop Ex: "ctrl+p+e"
+        for the listener to stop Ex: "ctrl+p+e".
     -------------------------------------------------------"""
-    def __init__(self, p_name, cheats_file, game_name, end_comb, check=True):
+    def __init__(self, p_name, cheats_file, end_comb, check=True):
         super(Backend, self).__init__()
-        self.system = "windows" if platform.system().lower() == "windows" else  "linux"
+        self.system = "windows" if platform.system().lower() == "windows" else "linux"
         if check:
             try:
                 p_info = Checker(cheats_file,p_name).run_all()
                 self.pid = p_info.info["pid"]
             except (ProcessError, CheatsMissing) as e:
                 raise e
-        cp = None
+        cf = None
         try:
-            cp = CheatsParser(cheats_file)
-            cp.cheats[game_name]
-        except (FileNotFoundError, KeyError, Exception) as e:
+            cf = CheatsFileParser(cheats_file, end_comb).return_cheats()
+        except (InvalidShortcut, KeyError, Exception) as e:
             raise e
-        self.game_name = game_name
-        self.cheats = cp.cheats
+        self.p_name = p_name
+        self.cheats = cf
         self.hooked = False
         self.end_comb = end_comb
         
 
     # For hoooking the hotkeys found in cheats.json
     def hook_keys(self):
-        handles = []
-        game_cheats = self.cheats[self.game_name]
+        game_cheats = self.cheats
         combs = [comb.lower() for comb in game_cheats]
         for comb in combs:
-            a = keyboard.add_hotkey(comb, self.func_hotkey, args=(comb, game_cheats[comb]))
-            handles.append(a)
-        a = keyboard.add_hotkey(self.end_comb, self.exit_key)
-        self.handles = handles
+            keyboard.add_hotkey(comb, self.func_hotkey, args=(game_cheats[comb]))
+        keyboard.add_hotkey(self.end_comb, self.exit_key)
         self.hooked = True
         # TODO: this does not seem to work with keyboard.wait(key)
         # exit_handle = keyboard.add_hotkey("ctrl+p+e", sys.exit, args=(0))
@@ -62,47 +56,32 @@ class Backend(object):
 
     def exit_key(self):
         keyboard.unhook_all_hotkeys()
-        self.handles = []
 
-    def func_hotkey(self, key, value_s):
-        if isinstance(value_s[0], list):
-            for val in value_s:
-                if self.system == "windows":
-                    writter(str(self.pid), int(val[0], 0), val[1])
-                elif self.system == "linux":
-                    writter(self.pid, int(val[0], 0), val[1])
-        else:
-            if self.system == "windows":
-                writter(str(self.pid), int(val[0], 0), val[1])
-            elif self.system == "linux":
-                writter(self.pid, int(val[0], 0), val[1])
-
-    def re_hook_keys(self, new_game):
-        if self.hooked:
-            self.unhook_keys()
-        self.game_name = new_game
-        try:
-            self.cheats[self.game_name]
-        except KeyError as e:
-            raise e
-        self.hook_keys()
+    def func_hotkey(self, val):
+        if self.system == "windows":
+            writter(str(self.pid), int(val[0], 0), val[1])
+        elif self.system == "linux":
+            writter(self.pid, int(val[0], 0), val[1])
 
     # Unhooks all hotkeys
     def unhook_keys(self):
         keyboard.unhook_all_hotkeys()
-        self.handles = []
 
     def __exit__(self, tp, val, tb):
         keyboard.unhook_all_hotkeys()
 
 class Checker(object):
+    """
+    Used for verifying the existence of the cheats file and the process
+    """
 
     def __init__(self, cheats_file, p_name):
         self.restarts = 0
-        self.p_name = p_name
         self.cheats_file = cheats_file
+        self.p_name = p_name
+        self.proc = None
 
-    def check_cheats(self):
+    def check_cheats_file(self):
         if not os.path.isfile(self.cheats_file):
             return False
         else:
@@ -126,35 +105,53 @@ class Checker(object):
         return False
 
     def run_all(self):
-        if not self.check_cheats():
+        if not self.check_cheats_file():
             raise CheatsMissing
         elif not self.check_proc():
             raise ProcessError
         else:
             return self.proc
 
-class CheatsParser(object):
-    """docstring for CheatsParser."""
-    def __init__(self, cheats_file):
+class CheatsFileParser(object):
+    """
+    Used for verifying the shortcuts and appending 0x to the memory address of the cheats
+    """
+    def __init__(self, cheats_file, end_comb):
+        self.cheats = None
+        with open(cheats_file, "r") as f:
+            try:
+                self.cheats = json.load(f)
+            except Exception as e:
+                raise e
+        self.shortcuts = [shortcut for shortcut in self.cheats]
+        self.shortcuts.append(end_comb)
         try:
-            with open(cheats_file, "r") as f:
-                try:
-                    self.cheats = json.load(f)
-                except Exception as e:
-                    raise e
-        except FileNotFoundError:
-            raise CheatsMissing
+            self.verify_shortcuts()
+        except InvalidShortcut as e:
+            raise e
         self.fix_addresses()
 
-    # Iterates trough each game finds all cheats and adds 0x to the address
-    # in case the user forgot..
+    # returns parsed cheats
+    def return_cheats(self):
+        return self.cheats
+
+    # Iterates trough each shortcut finds all cheats and adds 0x to the address
     def fix_addresses(self):
-        for game in self.cheats:
-            for key in self.cheats[game]:
-                if isinstance(self.cheats[game][key][0], list):
-                    for idx, cheat in enumerate(self.cheats[game][key]):
-                        if not cheat[0].startswith("0x"):
-                            self.cheats[game][key][idx][0] = "0x%s" % cheat[0]
-                else:
-                    if not self.cheats[game][key][0].startswith("0x"):
-                        self.cheats[game][key][0] = "0x%s" % self.cheats[game][key][0]
+        for key in self.cheats:
+            if not self.cheats[key][0].startswith("0x"):
+                self.cheats[key][0] = "0x%s" % self.cheats[key][0]
+    
+    # Verifies all shortcuts provided in cheats file
+    def verify_shortcuts(self):
+        for shortcut in self.shortcuts:
+            shortcut = shortcut.lower()
+            if shortcut.starstwith("+") or shortcut.endswith("+"):
+                raise InvalidShortcut(shortcut)
+            else:
+                short_keys = shortcut.split("+")
+                possible_keys = list(string.ascii_lowercase)
+                special_keys = ["ctrl","shift","tab","home","insert","end","delete","pause"]
+                possible_keys.extend(special_keys)
+                for key in short_keys:
+                    if key not in possible_keys:
+                        raise InvalidShortcut(key)

@@ -1,4 +1,4 @@
-import sys, struct, time, string
+import sys, struct, time
 from backend.backend_exceptions import NoHeapFound, HeapPermissionError
 
 class KeyListener(object):
@@ -20,24 +20,7 @@ class KeyListener(object):
         if self.keys >= 30:
             self.logger.SetValue("")
             self.keys = 0
-        time.sleep(0.16) # To avoid GTK crashes
-
-def verify_shortcut(shortcut):
-    has_passed = True
-    shortcut = shortcut.lower()
-    if shortcut.starstwith("+") or shortcut.endswith("+"):
-        has_passed = False
-    if not has_passed:
-        short_keys = shortcut.split("+")
-        possible_keys = list(string.ascii_lowercase)
-        special_keys = ["ctrl","shift","tab","home","insert","end","delete","pause"]
-        possible_keys.extend(special_keys)
-        for key in short_keys:
-            if not has_passed:
-                break
-            if key not in possible_keys:
-                has_passed = False
-    return has_passed
+        time.sleep(0.18) # To avoid GTK crashes
 
 def read_write_heap(pid, address, newValue):
     sys.stdout.write("This is unfinished use it at your own risk\n")
@@ -69,9 +52,9 @@ def read_write_heap(pid, address, newValue):
         inode = sline[4]
         pathname = sline[-1][:-1]
 
-        # check if there is read and write permission
+        # check if there is read and write permissions
         if perm[0] != 'r' or perm[1] != 'w':
-            print("[*] {} does not have read/write permission".format(pathname))
+            print("[*] {} does not have read/write permissions".format(pathname))
             maps_file.close()
             exit(0)
 
