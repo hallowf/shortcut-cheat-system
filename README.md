@@ -2,6 +2,10 @@
 From the keyboard github page:
 >This program makes no attempt to hide itself, so don't use it for keyloggers or online gaming bots. Be responsible.
 
+### Running as root on linux
+
+`cd scs && sudo ../venv/bin/python3.6 run_gui.py`
+
 ### Building requirements
 **python3.6(32 or 64bit)**
 **pybind11**
