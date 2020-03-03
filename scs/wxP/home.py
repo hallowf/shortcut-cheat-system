@@ -245,12 +245,10 @@ class MainWindow(wx.Frame):
 
     # Save current setting to pickle
     def on_save(self,e):
-        game_name = self.game_name_input.GetLineText(0).strip()
         proc_name = self.proc_name_input.GetLineText(0).strip()
         end_comb = self.end_comb_input.GetLineText(0).strip()
-        self.logger.AppendText("Saving values:\n\tGame name:%s\n\tProcess:%s\n\tEnd command:%s\n\tCheats file:%s\n" % (game_name, proc_name, end_comb, self.cheats_file_path))
+        self.logger.AppendText("Saving values:\n\tProcess:%s\n\tEnd command:%s\n\tCheats file:%s\n" % (proc_name, end_comb, self.cheats_file_path))
         to_save = {
-            "game_name": game_name,
             "proc_name": proc_name,
             "end_comb": end_comb,
             "cheats_file": self.cheats_file_path
