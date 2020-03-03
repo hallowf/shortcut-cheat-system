@@ -3,7 +3,7 @@ import wx, wx.adv, keyboard, pickle, os
 from backend.backend_exceptions import CheatsMissing, ProcessError
 from backend.scs_classes import Backend
 from backend.utils import KeyListener
-from gui.dialogs import AboutDialog, BasicUsageDialog
+from wxP.dialogs import AboutDialog, BasicUsageDialog
 from wx._core import StaticText
 
 class MainWindow(wx.Frame):

@@ -4,6 +4,7 @@ import os
 import sys
 import platform
 import string
+import logging
 
 import psutil
 import keyboard
@@ -22,7 +23,7 @@ class Backend(object):
         end combination is a string with the keys to be pressed
         for the listener to stop Ex: "ctrl+p+e".
     -------------------------------------------------------"""
-    def __init__(self, p_name, cheats_file, end_comb, check=True):
+    def __init__(self, p_name, cheats_file, end_comb, check=True, **kwargs):
         super(Backend, self).__init__()
         self.system = "windows" if platform.system().lower() == "windows" else "linux"
         if check:
@@ -40,33 +41,57 @@ class Backend(object):
         self.cheats = cf
         self.hooked = False
         self.end_comb = end_comb
+        self.list_shortcuts_key = kwargs.get("list_shortcuts_key", "ctrl+i")
+        self.log_level = kwargs.get("log_level")
+        self.logger = self.install_logger()
+
+    def install_logger(self):
+        n_level = getattr(logging, self.log_level.upper(), 10)
+        # Console logger
+        log_format = "%(name)s - %(levelname)s: %(message)s"
+        logging.basicConfig(format=log_format, level=n_level)
+        logger = logging.getLogger("SCS-Backend")
+        msg = "%s: %s" % ("Console logger is set with log level", self.log_level)
+        logger.info(msg)
+        return logger
+
+    # Show key combinations
+    def show_combs(self):
+        combs = [comb.lower() for comb in self.cheats]
+        self.logger.info("Available shortcuts: %s" % combs)
         
 
     # For hoooking the hotkeys found in cheats.json
     def hook_keys(self):
+        self.logger.info("hooking keys")
         game_cheats = self.cheats
         combs = [comb.lower() for comb in game_cheats]
         for comb in combs:
-            keyboard.add_hotkey(comb, self.func_hotkey, args=(game_cheats[comb]))
+            keyboard.add_hotkey(comb, self.func_hotkey, args=(game_cheats[comb][1],game_cheats[comb][0]))
+        # hotkey for showing combinations
+        keyboard.add_hotkey(self.list_shortcuts_key, self.show_combs, args=())
         self.hooked = True
-        # TODO: this does not seem to work with keyboard.wait(key)
-        # exit_handle = keyboard.add_hotkey("ctrl+p+e", sys.exit, args=(0))
-        # self.handles.append(exit_handle)
 
+    # function to run and wait for the end combination
+    # unhooks all keys after
     def run(self):
         keyboard.wait(self.end_comb)
         keyboard.unhook_all_hotkeys()
 
-    def func_hotkey(self, val):
+    # executes the memory writter plugin according to the current OS
+    def func_hotkey(self, val, addr):
         if self.system == "windows":
-            writter(str(self.pid), int(val[0], 0), val[1])
+            self.logger.debug("Writting: ", val, " at ", addr, " on process ", str(self.pid))
+            writter(str(self.pid), int(addr, 0), val)
         elif self.system == "linux":
-            writter(self.pid, int(val[0], 0), val[1])
+            self.logger.debug("Writting: ", val, " at ", addr, " on process ", str(self.pid))
+            writter(self.pid, int(addr, 0), val)
 
     # Unhooks all hotkeys
     def unhook_keys(self):
         keyboard.unhook_all_hotkeys()
 
+    # For unexpected exits
     def __exit__(self, tp, val, tb):
         keyboard.unhook_all_hotkeys()
 
@@ -81,14 +106,16 @@ class Checker(object):
         self.p_name = p_name
         self.proc = None
 
+    # check existence of cheats file
     def check_cheats_file(self):
         if not os.path.isfile(self.cheats_file):
             return False
         else:
             return True
 
+    # check existence of process
     def check_proc(self):
-    #Iterate over the all the running process
+    #Iterate over the all the running processes
         for proc in psutil.process_iter(attrs=['pid', 'name']):
             try:
                 # Check if process name contains the given name string.
@@ -104,6 +131,8 @@ class Checker(object):
                     self.check_proc()
         return False
 
+    # this should have a better name since it also 
+    # returns the process info if all checks pass
     def run_all(self):
         if not self.check_cheats_file():
             raise CheatsMissing

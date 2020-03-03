@@ -5,7 +5,19 @@ import argparse
 import logging
 from backend.scs_classes import Backend
 
-def install_logger(log_level):
+# Sets up logger and returns it
+def set_up_logger(log_level):
+    n_level = getattr(logging, log_level.upper(), 10)
+    # Console logger
+    log_format = "%(name)s - %(levelname)s: %(message)s"
+    logging.basicConfig(format=log_format, level=n_level)
+    logger = logging.getLogger("SCS-CLI")
+    msg = "%s: %s" % ("Console logger is set with log level", log_level)
+    logger.info(msg)
+    return logger
+
+# Verifies and fixes log level if invalid
+def verify_log_level(log_level):
     log_levels = [
         "INFO",
         "WARNING",
@@ -16,15 +28,7 @@ def install_logger(log_level):
     if log_level not in log_levels:
         sys.stdout.write("%s: %s\n" % ("Invalid log level", log_level))
         log_level = "INFO"
-    n_level = getattr(logging, log_level.upper(), 10)
-    # Console logger
-    log_format = "%(name)s - %(levelname)s: %(message)s"
-    logging.basicConfig(format=log_format, level=n_level)
-    logger = logging.getLogger("SCS-CLI")
-    msg = "%s: %s" % ("Console logger is set with log level", log_level)
-    logger.info(msg)
-    return logger
-
+    return log_level
 
 def verify_args(args):
     false_values = ["0", "FALSE"]
@@ -61,14 +65,21 @@ def parse_and_return_args():
         raise
 
 if __name__ == '__main__':
+    logger = None
     try:
         args = parse_and_return_args()
-        install_logger(args.log_level)
-        b = Backend(args.process, args.cheats_file,  args.end_combination, True)
+        log_level = verify_log_level(args.log_level)
+        logger = set_up_logger(log_level)
+        b = Backend(args.process, args.cheats_file,
+                    args.end_combination, True, log_level=log_level)
         b.hook_keys()
-        print("Running...\nPress ctrl+p+e or esc to exit")
+        logger.info("SCS running. Press %s or ctrl+c to exit" % args.end_combination)
         b.run()
-        print("exiting")
+        logger.info("Exiting")
         sys.exit(0)
     except Exception as e:
         raise e
+        # if logger != None:
+        #     logger.error(str(e))
+        # else:
+        #     sys.stdout.write("Error: %s" % str(e))
