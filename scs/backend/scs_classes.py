@@ -48,13 +48,13 @@ class Backend(object):
         combs = [comb.lower() for comb in game_cheats]
         for comb in combs:
             keyboard.add_hotkey(comb, self.func_hotkey, args=(game_cheats[comb]))
-        keyboard.add_hotkey(self.end_comb, self.exit_key)
         self.hooked = True
         # TODO: this does not seem to work with keyboard.wait(key)
         # exit_handle = keyboard.add_hotkey("ctrl+p+e", sys.exit, args=(0))
         # self.handles.append(exit_handle)
 
-    def exit_key(self):
+    def run(self):
+        keyboard.wait(self.end_comb)
         keyboard.unhook_all_hotkeys()
 
     def func_hotkey(self, val):
@@ -145,12 +145,14 @@ class CheatsFileParser(object):
     def verify_shortcuts(self):
         for shortcut in self.shortcuts:
             shortcut = shortcut.lower()
-            if shortcut.starstwith("+") or shortcut.endswith("+"):
+            if shortcut.startswith("+") or shortcut.endswith("+"):
                 raise InvalidShortcut(shortcut)
             else:
                 short_keys = shortcut.split("+")
-                possible_keys = list(string.ascii_lowercase)
-                special_keys = ["ctrl","shift","tab","home","insert","end","delete","pause"]
+                possible_keys = list(string.ascii_letters)
+                possible_numbers = [str(i) for i in range(10)]
+                special_keys = ["ctrl","shift","tab","home","insert","end","delete","pause", "esc"]
+                possible_keys.extend(possible_numbers)
                 possible_keys.extend(special_keys)
                 for key in short_keys:
                     if key not in possible_keys:
